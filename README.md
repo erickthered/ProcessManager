@@ -88,7 +88,7 @@ $logger->debug($process, 'Total of 100 entries found');
 ## Reports
 You can also further process the log to create a pretty report. To do that, you have to create
 a new service and implement the interface `ProcessManagerBundle\Report\ReportInterface`.
-Import Definitions has an example implementation of that [Import Definition Report](https://github.com/w-vision/ImportDefinitions/blob/master/src/ImportDefinitionsBundle/ProcessManager/ImportDefinitionsReport.php)
+Import Definitions has an example implementation of that [Import Definition Report](https://github.com/w-vision/DataDefinitions/blob/master/src/DataDefinitionsBundle/ProcessManager/ImportDefinitionsReport.php)
 
 
 
