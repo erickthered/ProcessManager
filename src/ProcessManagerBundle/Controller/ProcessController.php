@@ -15,6 +15,8 @@
 namespace ProcessManagerBundle\Controller;
 
 use CoreShop\Bundle\ResourceBundle\Controller\ResourceController;
+use Pimcore\Db;
+use ProcessManagerBundle\Model\Process;
 use ProcessManagerBundle\Model\ProcessInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,6 +25,43 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 class ProcessController extends ResourceController
 {
+    /**
+     * @param Request $request
+     *
+     * @return JsonResponse
+     */
+    public function listAction(Request $request)
+    {
+        $class = $this->repository->getClassName();
+        $listingClass = $class.'\Listing';
+
+        /**
+         * @var Process\Listing $list
+         */
+        $list = new $listingClass();
+        if ($sort = $request->get('sort')) {
+            $sort = json_decode($sort)[0];
+            $list->setOrderKey($sort->property);
+            $list->setOrder($sort->direction);
+        } else {
+            $list->setOrderKey("id");
+            $list->setOrder("DESC");
+        }
+
+        $data = $list->getItems(
+            $request->get('start', 0),
+            $request->get('limit', 50)
+        );
+
+        return $this->viewHandler->handle(
+            [
+                'data' => $data,
+                'total' => $list->getTotalCount(),
+            ],
+            ['group' => 'List']
+        );
+    }
+
     /**
      * @param Request $request
      * @return Response
@@ -55,17 +94,45 @@ class ProcessController extends ResourceController
 
         if ($registry->has($process->getType())) {
             $content = $registry->get($process->getType())->generateReport($process, $log);
-        }
-        else {
+        } else {
             $content = $this->get('process_manager.default_report')->generateReport($process, $log);
         }
 
         return $this->json(
             [
                 'success' => true,
-                'report' => $content
+                'report' => $content,
             ]
         );
+    }
+
+    /**
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function stopAction(Request $request)
+    {
+        /** @var Process $process */
+        $process = $this->findOr404($request->get('id'));
+        $process->setStatus('stopping');
+        $process->save();
+
+        return $this->json(
+            [
+                'success' => true,
+            ]
+        );
+    }
+
+    /**
+     * @return JsonResponse
+     */
+    public function clearAction()
+    {
+        $connection = Db::get();
+        $connection->exec('DELETE FROM process_manager_processes  WHERE started < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 7 DAY))');
+
+        return $this->json(['success' => true]);
     }
 
     protected function getLog(ProcessInterface $process)
